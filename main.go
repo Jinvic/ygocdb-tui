@@ -2,7 +2,7 @@ package main
 
 import (
 	"log"
-	"ygocdb-tui/ui"
+	"ygocdb-tui/internal/ui"
 )
 
 func main() {
