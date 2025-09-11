@@ -5,15 +5,10 @@ import (
 	"ygocdb-tui/internal/api"
 	"ygocdb-tui/internal/log"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/bubbles/textinput"
 )
 
-func (m model) Init() tea.Cmd {
-	log.Info("Initializing UI model")
-	return textinput.Blink
-}
-
-func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+// Update handles UI updates
+func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	
 	log.Debug("Processing message of type: %T", msg)
@@ -24,13 +19,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		
 		switch msg.Type {
 		case tea.KeyCtrlC, tea.KeyEsc:
-			if m.mode == searchMode {
+			if m.mode == SearchMode {
 				log.Info("Received exit key, quitting application")
 				return m, tea.Quit
-			} else if m.mode == resultMode || m.mode == cardMode {
+			} else if m.mode == ResultMode || m.mode == CardMode {
 				log.Info("Returning to search mode")
 				// Go back to search mode
-				m.mode = searchMode
+				m.mode = SearchMode
 				m.results = []api.Card{}
 				m.card = nil
 				m.selected = -1
@@ -38,43 +33,41 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.currentPage = 0
 				m.totalPages = 0
 				m.nextStart = 0
-				m.pageHistory = make([]int, 0) // 清空页面历史
 				return m, nil
 			}
 
 		case tea.KeyEnter:
-			if m.mode == searchMode && !m.loading {
+			if m.mode == SearchMode && !m.loading {
 				// Search for cards
 				query := m.textInput.Value()
 				if query != "" {
 					log.Info("Initiating search for query: %s", query)
 					m.query = query
 					m.currentPage = 0
-					m.pageHistory = make([]int, 0) // 开始新搜索时清空页面历史
 					m.loading = true
 					m.textInput.Blur()
-					return m, searchCards(query, 0)
+					return m, searchCardsCmd(query, 0)
 				}
-			} else if m.mode == resultMode && len(m.results) > 0 {
+			} else if m.mode == ResultMode && len(m.results) > 0 {
 				// View selected card
 				// Calculate the actual index in the full results array
 				actualIndex := m.currentPage*PageSize + m.selected
 				if actualIndex >= 0 && actualIndex < len(m.results) {
 					log.Info("Viewing card details for card ID: %d", m.results[actualIndex].ID)
 					m.loading = true
-					return m, getCardByID(m.results[actualIndex].ID)
+					return m, getCardByIDCmd(m.results[actualIndex].ID)
 				}
-			} else if m.mode == cardMode {
+			} else if m.mode == CardMode {
 				// Back to results
 				log.Info("Returning to search results")
-				m.mode = resultMode
+				m.mode = ResultMode
 				m.card = nil
 				m.loading = false
 				return m, nil
 			}
 
 		case tea.KeyUp:
-			if m.mode == resultMode && len(m.getCurrentPageResults()) > 0 {
+			if m.mode == ResultMode && len(m.getCurrentPageResults()) > 0 {
 				m.selected--
 				if m.selected < 0 {
 					m.selected = len(m.getCurrentPageResults()) - 1
@@ -84,7 +77,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 
 		case tea.KeyDown:
-			if m.mode == resultMode && len(m.getCurrentPageResults()) > 0 {
+			if m.mode == ResultMode && len(m.getCurrentPageResults()) > 0 {
 				m.selected++
 				if m.selected >= len(m.getCurrentPageResults()) {
 					m.selected = 0
@@ -95,29 +88,29 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case tea.KeyRight:
 			// Next page
-			if m.mode == resultMode && !m.loading {
+			if m.mode == ResultMode && !m.loading {
 				log.Info("Navigating to next page, current page=%d", m.currentPage)
-				return m, m.nextPage()
+				return m, m.nextPageCmd()
 			}
 			return m, nil
 
 		case tea.KeyLeft:
 			// Previous page
-			if m.mode == resultMode && !m.loading && m.currentPage > 0 {
+			if m.mode == ResultMode && !m.loading && m.currentPage > 0 {
 				log.Info("Navigating to previous page, current page=%d", m.currentPage)
-				return m, m.prevPage()
+				return m, m.prevPageCmd()
 			}
 			return m, nil
 		}
 
-	case searchResultMsg:
-		log.Info("Received search results message, found %d results", len(msg.results.Result))
+	case SearchResultMsg:
+		log.Info("Received search results message, found %d results", len(msg.Results.Result))
 		m.loading = false
-		m.mode = resultMode
+		m.mode = ResultMode
 		// Append new results to cached results
-		m.results = append(m.results, msg.results.Result...)
+		m.results = append(m.results, msg.Results.Result...)
 		// Update pagination info
-		m.nextStart = msg.results.Next
+		m.nextStart = msg.Results.Next
 		m.totalPages = (len(m.results) + PageSize - 1) / PageSize
 		// Reset selection
 		m.selected = 0
@@ -126,28 +119,28 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			log.Warn("No results found for search")
 		} else {
 			// Check if we need to auto-fetch more results to fill the current page
-			return m, m.autoFetchNextPage()
+			return m, m.autoFetchNextPageCmd()
 		}
 		return m, nil
 
-	case searchByIDResultMsg:
-		log.Info("Received card by ID result message, card ID: %d", msg.card.ID)
+	case SearchByIDResultMsg:
+		log.Info("Received card by ID result message, card ID: %d", msg.Card.ID)
 		m.loading = false
-		m.mode = cardMode
-		m.card = msg.card
+		m.mode = CardMode
+		m.card = msg.Card
 		return m, nil
 
-	case cardResultMsg:
-		log.Info("Received card result message, card ID: %d", msg.card.ID)
+	case CardResultMsg:
+		log.Info("Received card result message, card ID: %d", msg.Card.ID)
 		m.loading = false
-		m.mode = cardMode
-		m.card = msg.card
+		m.mode = CardMode
+		m.card = msg.Card
 		return m, nil
 
-	case searchErrorMsg:
-		log.Error("Received search error message: %v", msg.err)
+	case SearchErrorMsg:
+		log.Error("Received search error message: %v", msg.Err)
 		m.loading = false
-		m.err = msg.err
+		m.err = msg.Err
 		m.textInput.Focus()
 		return m, nil
 
@@ -164,7 +157,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 // getCurrentPageResults returns the results for the current page
-func (m *model) getCurrentPageResults() []api.Card {
+func (m *Model) getCurrentPageResults() []api.Card {
 	start := m.currentPage * PageSize
 	end := start + PageSize
 	

@@ -1,8 +1,10 @@
 package ui
 
 import (
-	"github.com/charmbracelet/bubbles/textinput"
 	"ygocdb-tui/internal/api"
+	"ygocdb-tui/internal/log"
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/bubbles/textinput"
 )
 
 const (
@@ -10,7 +12,20 @@ const (
 	PageSize = 10
 )
 
-type model struct {
+// Mode represents the current UI mode
+type Mode int
+
+const (
+	// SearchMode is the mode for searching cards
+	SearchMode Mode = iota
+	// ResultMode is the mode for displaying search results
+	ResultMode
+	// CardMode is the mode for displaying card details
+	CardMode
+)
+
+// Model represents the application state
+type Model struct {
 	textInput   textinput.Model
 	results     []api.Card // All cached results
 	currentPage int        // Current page index (0-based)
@@ -18,30 +33,22 @@ type model struct {
 	card        *api.GetCardResponse
 	selected    int
 	err         error
-	mode        mode
+	mode        Mode
 	loading     bool
 	apiClient   *api.Client
 	query       string
 	nextStart   int   // Next start position for API request
-	pageHistory []int // Record page history for navigation
 }
 
-type mode int
-
-const (
-	searchMode mode = iota
-	resultMode
-	cardMode
-)
-
-func initialModel() model {
+// NewModel creates a new UI model
+func NewModel() Model {
 	ti := textinput.New()
 	ti.Placeholder = "输入卡片名称或ID"
 	ti.Focus()
 	ti.CharLimit = 156
 	ti.Width = 40
 
-	return model{
+	return Model{
 		textInput:   ti,
 		results:     []api.Card{},
 		currentPage: 0,
@@ -49,11 +56,16 @@ func initialModel() model {
 		card:        nil,
 		selected:    -1,
 		err:         nil,
-		mode:        searchMode,
+		mode:        SearchMode,
 		loading:     false,
 		apiClient:   api.NewClient(),
 		query:       "",
 		nextStart:   0,
-		pageHistory: make([]int, 0),
 	}
+}
+
+// Init initializes the model
+func (m Model) Init() tea.Cmd {
+	log.Info("Initializing UI model")
+	return textinput.Blink
 }

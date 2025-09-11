@@ -2,21 +2,24 @@ package ui
 
 import "ygocdb-tui/internal/api"
 
-// Messages
-type searchResultMsg struct {
-	results *api.SearchResponse
-	query   string
-	start   int
+// SearchResultMsg represents a message containing search results
+type SearchResultMsg struct {
+	Results *api.SearchResponse
+	Query   string
+	Start   int
 }
 
-type searchByIDResultMsg struct {
-	card *api.GetCardResponse
+// SearchByIDResultMsg represents a message containing a card fetched by ID
+type SearchByIDResultMsg struct {
+	Card *api.GetCardResponse
 }
 
-type cardResultMsg struct {
-	card *api.GetCardResponse
+// CardResultMsg represents a message containing card details
+type CardResultMsg struct {
+	Card *api.GetCardResponse
 }
 
-type searchErrorMsg struct {
-	err error
+// SearchErrorMsg represents a message containing a search error
+type SearchErrorMsg struct {
+	Err error
 }

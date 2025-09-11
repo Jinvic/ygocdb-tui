@@ -6,13 +6,14 @@ import (
 	"ygocdb-tui/internal/log"
 )
 
-func (m model) View() string {
+// View renders the UI
+func (m Model) View() string {
 	log.Debug("Rendering view for mode: %d", m.mode)
 	
 	var b strings.Builder
 	
 	switch m.mode {
-	case searchMode:
+	case SearchMode:
 		log.Debug("Rendering search mode view")
 		b.WriteString(titleStyle.Render("游戏王卡片查询工具 (百鸽API)"))
 		b.WriteString("\n\n")
@@ -30,7 +31,7 @@ func (m model) View() string {
 		
 		b.WriteString(helpStyle("按 Enter 搜索，按 Esc 退出"))
 		
-	case resultMode:
+	case ResultMode:
 		log.Debug("Rendering result mode view, results count: %d, current page: %d", len(m.results), m.currentPage)
 		b.WriteString(titleStyle.Render("搜索结果"))
 		b.WriteString("\n\n")
@@ -56,13 +57,13 @@ func (m model) View() string {
 			
 			// Pagination info
 			b.WriteString("\n")
-			b.WriteString(paginationStyle.Render(formatPagination(m.currentPage, m.totalPages, len(m.results))))
+			b.WriteString(paginationStyle.Render(formatPagination(m.currentPage, m.totalPages)))
 		}
 		
 		b.WriteString("\n")
 		b.WriteString(helpStyle("使用 ↑/↓ 选择卡片，←/→ 翻页，按 Enter 查看详情，按 Esc 返回"))
 
-	case cardMode:
+	case CardMode:
 		log.Debug("Rendering card mode view")
 		b.WriteString(titleStyle.Render("卡片详情"))
 		b.WriteString("\n\n")

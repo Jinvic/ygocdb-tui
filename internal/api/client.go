@@ -10,6 +10,7 @@ import (
 )
 
 const (
+	// BaseURL is the base URL for the ygocdb API
 	BaseURL = "https://ygocdb.com"
 )
 

@@ -8,7 +8,7 @@ import (
 // Start initializes and starts the TUI application
 func Start() error {
 	log.Info("Starting TUI application")
-	p := tea.NewProgram(initialModel())
+	p := tea.NewProgram(NewModel())
 	_, err := p.Run()
 	
 	if err != nil {

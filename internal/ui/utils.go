@@ -2,15 +2,17 @@ package ui
 
 import (
 	"fmt"
-	"ygocdb-tui/internal/api"
 	"strings"
+	"ygocdb-tui/internal/api"
 )
 
+// formatCardSummary formats a card summary for display
 func formatCardSummary(card api.Card) string {
 	return fmt.Sprintf("%s (%d)", card.CnName, card.ID)
 }
 
-func formatPagination(currentPage, totalPages, totalResults int) string {
+// formatPagination formats pagination information for display
+func formatPagination(currentPage, totalPages int) string {
 	page := currentPage + 1 // Convert to 1-based indexing for display
 	if totalPages <= 1 {
 		return fmt.Sprintf("第 %d 页", page)
@@ -23,6 +25,7 @@ func formatPagination(currentPage, totalPages, totalResults int) string {
 	}
 }
 
+// formatCardDetails formats card details for display
 func formatCardDetails(card api.GetCardResponse) string {
 	var b strings.Builder
 	b.WriteString(fmt.Sprintf("卡片密码: %d\n", card.ID))
@@ -30,24 +33,25 @@ func formatCardDetails(card api.GetCardResponse) string {
 	b.WriteString(fmt.Sprintf("类型: %s\n", getCardType(card.Data.Type)))
 	b.WriteString(fmt.Sprintf("种族: %s\n", getCardRace(card.Data.Race)))
 	b.WriteString(fmt.Sprintf("属性: %s\n", getCardAttribute(card.Data.Attrib)))
-	
+
 	if card.Data.Level > 0 {
 		b.WriteString(fmt.Sprintf("星级: %d\n", card.Data.Level))
 	}
-	
+
 	if card.Data.Atk >= 0 {
 		b.WriteString(fmt.Sprintf("攻击力: %d\n", card.Data.Atk))
 	}
-	
+
 	if card.Data.Def >= 0 {
 		b.WriteString(fmt.Sprintf("守备力: %d\n", card.Data.Def))
 	}
-	
+
 	b.WriteString(fmt.Sprintf("\n效果:\n%s", card.Text.Desc))
-	
+
 	return b.String()
 }
 
+// getCardType returns the Chinese name for a card type
 func getCardType(typ int) string {
 	switch typ {
 	case 17:
@@ -63,6 +67,7 @@ func getCardType(typ int) string {
 	}
 }
 
+// getCardRace returns the Chinese name for a card race
 func getCardRace(race int) string {
 	switch race {
 	case 1:
@@ -118,6 +123,7 @@ func getCardRace(race int) string {
 	}
 }
 
+// getCardAttribute returns the Chinese name for a card attribute
 func getCardAttribute(attr int) string {
 	switch attr {
 	case 1:
