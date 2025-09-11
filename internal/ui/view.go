@@ -31,7 +31,7 @@ func (m model) View() string {
 		b.WriteString(helpStyle("按 Enter 搜索，按 Esc 退出"))
 		
 	case resultMode:
-		log.Debug("Rendering result mode view, results count: %d", len(m.results))
+		log.Debug("Rendering result mode view, results count: %d, current page: %d", len(m.results), m.currentPage)
 		b.WriteString(titleStyle.Render("搜索结果"))
 		b.WriteString("\n\n")
 		
@@ -42,8 +42,11 @@ func (m model) View() string {
 			log.Debug("No results to display")
 			b.WriteString("未找到相关卡片")
 		} else {
-			log.Debug("Displaying %d results", len(m.results))
-			for i, result := range m.results {
+			// Display only the current page results
+			currentPageResults := m.getCurrentPageResults()
+			log.Debug("Displaying %d results on current page", len(currentPageResults))
+			
+			for i, result := range currentPageResults {
 				if i == m.selected {
 					b.WriteString("> " + resultStyle.Render(formatCardSummary(result)) + "\n\n")
 				} else {
@@ -53,7 +56,7 @@ func (m model) View() string {
 			
 			// Pagination info
 			b.WriteString("\n")
-			b.WriteString(paginationStyle.Render(formatPagination(m.start, m.next, len(m.pageHistory))))
+			b.WriteString(paginationStyle.Render(formatPagination(m.currentPage, m.totalPages, len(m.results))))
 		}
 		
 		b.WriteString("\n")

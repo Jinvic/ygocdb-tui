@@ -10,13 +10,13 @@ func formatCardSummary(card api.Card) string {
 	return fmt.Sprintf("%s (%d)", card.CnName, card.ID)
 }
 
-func formatPagination(start, next int, historyLen int) string {
-	page := start/10 + 1
-	if start == 0 && next == 0 {
+func formatPagination(currentPage, totalPages, totalResults int) string {
+	page := currentPage + 1 // Convert to 1-based indexing for display
+	if totalPages <= 1 {
 		return fmt.Sprintf("第 %d 页", page)
-	} else if start == 0 {
+	} else if currentPage == 0 {
 		return fmt.Sprintf("第 %d 页 | 按 → 查看下一页", page)
-	} else if next == 0 {
+	} else if currentPage == totalPages-1 {
 		return fmt.Sprintf("第 %d 页 | 按 ← 查看上一页", page)
 	} else {
 		return fmt.Sprintf("第 %d 页 | 按 ← 查看上一页 | 按 → 查看下一页", page)

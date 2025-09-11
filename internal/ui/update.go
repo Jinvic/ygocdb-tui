@@ -35,8 +35,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.card = nil
 				m.selected = -1
 				m.textInput.Focus()
-				m.start = 0
-				m.next = 0
+				m.currentPage = 0
+				m.totalPages = 0
+				m.nextStart = 0
 				m.pageHistory = make([]int, 0) // 清空页面历史
 				return m, nil
 			}
@@ -48,7 +49,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if query != "" {
 					log.Info("Initiating search for query: %s", query)
 					m.query = query
-					m.start = 0
+					m.currentPage = 0
 					m.pageHistory = make([]int, 0) // 开始新搜索时清空页面历史
 					m.loading = true
 					m.textInput.Blur()
@@ -56,10 +57,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			} else if m.mode == resultMode && len(m.results) > 0 {
 				// View selected card
-				if m.selected >= 0 && m.selected < len(m.results) {
-					log.Info("Viewing card details for card ID: %d", m.results[m.selected].ID)
+				// Calculate the actual index in the full results array
+				actualIndex := m.currentPage*PageSize + m.selected
+				if actualIndex >= 0 && actualIndex < len(m.results) {
+					log.Info("Viewing card details for card ID: %d", m.results[actualIndex].ID)
 					m.loading = true
-					return m, getCardByID(m.results[m.selected].ID)
+					return m, getCardByID(m.results[actualIndex].ID)
 				}
 			} else if m.mode == cardMode {
 				// Back to results
@@ -71,19 +74,19 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case tea.KeyUp:
-			if m.mode == resultMode && len(m.results) > 0 {
+			if m.mode == resultMode && len(m.getCurrentPageResults()) > 0 {
 				m.selected--
 				if m.selected < 0 {
-					m.selected = len(m.results) - 1
+					m.selected = len(m.getCurrentPageResults()) - 1
 				}
 				log.Debug("Selected item changed to index: %d", m.selected)
 			}
 			return m, nil
 
 		case tea.KeyDown:
-			if m.mode == resultMode && len(m.results) > 0 {
+			if m.mode == resultMode && len(m.getCurrentPageResults()) > 0 {
 				m.selected++
-				if m.selected >= len(m.results) {
+				if m.selected >= len(m.getCurrentPageResults()) {
 					m.selected = 0
 				}
 				log.Debug("Selected item changed to index: %d", m.selected)
@@ -92,25 +95,17 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case tea.KeyRight:
 			// Next page
-			if m.mode == resultMode && m.next > 0 && !m.loading {
-				log.Info("Navigating to next page, start=%d", m.next)
-				m.pageHistory = append(m.pageHistory, m.start) // 记录当前页到历史
-				m.loading = true
-				m.start = m.next
-				return m, searchCards(m.query, m.start)
+			if m.mode == resultMode && !m.loading {
+				log.Info("Navigating to next page, current page=%d", m.currentPage)
+				return m, m.nextPage()
 			}
 			return m, nil
 
 		case tea.KeyLeft:
 			// Previous page
-			if m.mode == resultMode && len(m.pageHistory) > 0 && !m.loading {
-				// 从历史记录中获取上一页的start位置
-				prevStart := m.pageHistory[len(m.pageHistory)-1]
-				m.pageHistory = m.pageHistory[:len(m.pageHistory)-1] // 移除最后一条记录
-				log.Info("Navigating to previous page, start=%d", prevStart)
-				m.loading = true
-				m.start = prevStart
-				return m, searchCards(m.query, m.start)
+			if m.mode == resultMode && !m.loading && m.currentPage > 0 {
+				log.Info("Navigating to previous page, current page=%d", m.currentPage)
+				return m, m.prevPage()
 			}
 			return m, nil
 		}
@@ -119,12 +114,19 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		log.Info("Received search results message, found %d results", len(msg.results.Result))
 		m.loading = false
 		m.mode = resultMode
-		m.results = msg.results.Result
+		// Append new results to cached results
+		m.results = append(m.results, msg.results.Result...)
+		// Update pagination info
+		m.nextStart = msg.results.Next
+		m.totalPages = (len(m.results) + PageSize - 1) / PageSize
+		// Reset selection
 		m.selected = 0
-		m.next = msg.results.Next
 		if len(m.results) == 0 {
 			m.err = fmt.Errorf("未找到相关卡片")
 			log.Warn("No results found for search")
+		} else {
+			// Check if we need to auto-fetch more results to fill the current page
+			return m, m.autoFetchNextPage()
 		}
 		return m, nil
 
@@ -159,4 +161,22 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	log.Debug("Updating text input")
 	m.textInput, cmd = m.textInput.Update(msg)
 	return m, cmd
+}
+
+// getCurrentPageResults returns the results for the current page
+func (m *model) getCurrentPageResults() []api.Card {
+	start := m.currentPage * PageSize
+	end := start + PageSize
+	
+	// Ensure end doesn't exceed the total number of results
+	if end > len(m.results) {
+		end = len(m.results)
+	}
+	
+	// If start is beyond the results, return empty slice
+	if start >= len(m.results) {
+		return []api.Card{}
+	}
+	
+	return m.results[start:end]
 }

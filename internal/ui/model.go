@@ -5,9 +5,16 @@ import (
 	"ygocdb-tui/internal/api"
 )
 
+const (
+	// PageSize is the number of items to display per page
+	PageSize = 10
+)
+
 type model struct {
 	textInput   textinput.Model
-	results     []api.Card
+	results     []api.Card // All cached results
+	currentPage int        // Current page index (0-based)
+	totalPages  int        // Total number of pages
 	card        *api.GetCardResponse
 	selected    int
 	err         error
@@ -15,9 +22,8 @@ type model struct {
 	loading     bool
 	apiClient   *api.Client
 	query       string
-	start       int
-	next        int
-	pageHistory []int // 记录页面历史，用于正确返回上一页
+	nextStart   int   // Next start position for API request
+	pageHistory []int // Record page history for navigation
 }
 
 type mode int
@@ -38,6 +44,8 @@ func initialModel() model {
 	return model{
 		textInput:   ti,
 		results:     []api.Card{},
+		currentPage: 0,
+		totalPages:  0,
 		card:        nil,
 		selected:    -1,
 		err:         nil,
@@ -45,8 +53,7 @@ func initialModel() model {
 		loading:     false,
 		apiClient:   api.NewClient(),
 		query:       "",
-		start:       0,
-		next:        0,
+		nextStart:   0,
 		pageHistory: make([]int, 0),
 	}
 }

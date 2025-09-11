@@ -64,3 +64,66 @@ func getCardByID(id int) tea.Cmd {
 		return cardResultMsg{card}
 	}
 }
+
+// nextPage checks if we need to fetch more results from API
+func (m *model) nextPage() tea.Cmd {
+	log.Info("Checking if next page needs to be fetched")
+	
+	// Calculate the start index for the next page
+	nextPageStart := (m.currentPage + 1) * PageSize
+	
+	// If we have enough cached results, just update the page
+	if nextPageStart < len(m.results) {
+		log.Debug("Next page is already cached, moving to page %d", m.currentPage+1)
+		m.currentPage++
+		m.selected = 0
+		// After moving to next page, check if we need to auto-fetch more results to fill it
+		return m.autoFetchNextPage()
+	}
+	
+	// If we don't have enough results, check if there are more pages available
+	if m.nextStart > 0 {
+		log.Info("Fetching next page from API, start=%d", m.nextStart)
+		m.loading = true
+		return searchCards(m.query, m.nextStart)
+	}
+	
+	log.Debug("No more pages available")
+	return nil
+}
+
+// prevPage navigates to the previous page
+func (m *model) prevPage() tea.Cmd {
+	log.Info("Navigating to previous page, current page=%d", m.currentPage)
+	
+	if m.currentPage > 0 {
+		m.currentPage--
+		m.selected = 0
+	}
+	
+	return nil
+}
+
+// autoFetchNextPage checks if we need to automatically fetch more results 
+// to fill the current page when it has fewer than PageSize items
+func (m *model) autoFetchNextPage() tea.Cmd {
+	log.Info("Checking if we need to auto-fetch more results to fill current page")
+	
+	// Get current page results
+	currentPageResults := m.getCurrentPageResults()
+	
+	// Calculate if current page is the last page based on current results
+	expectedTotalPages := (len(m.results) + PageSize - 1) / PageSize
+	isLastPage := m.currentPage == expectedTotalPages-1
+	
+	// If current page has less than PageSize items and there are more results available
+	// and we're on the last page, then auto-fetch more results
+	if len(currentPageResults) < PageSize && m.nextStart > 0 && isLastPage {
+		log.Info("Current page has %d items (less than %d), is the last page, and more results are available. Auto-fetching next page.", 
+			len(currentPageResults), PageSize)
+		m.loading = true
+		return searchCards(m.query, m.nextStart)
+	}
+	
+	return nil
+}
