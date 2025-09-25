@@ -29,7 +29,7 @@ func formatPagination(currentPage, totalPages int) string {
 func formatCardDetails(card api.GetCardResponse) string {
 	var b strings.Builder
 	b.WriteString(fmt.Sprintf("卡片密码: %d\n", card.ID))
-	b.WriteString(fmt.Sprintf("名称: %s\n", card.Text.Types))
+	b.WriteString(fmt.Sprintf("名称: %s\n", card.Text.Name))
 	b.WriteString(fmt.Sprintf("类型: %s\n", getCardType(card.Data.Type)))
 	b.WriteString(fmt.Sprintf("种族: %s\n", getCardRace(card.Data.Race)))
 	b.WriteString(fmt.Sprintf("属性: %s\n", getCardAttribute(card.Data.Attrib)))
